@@ -3,3 +3,7 @@ __pycache__/
 *.sqlite-journal
 *.zip
 public/
+firebase-public/
+runtime-data/
+.firebase/
+firebase-debug.log*

@@ -1,0 +1,22 @@
+{
+  "hosting": {
+    "public": "firebase-public",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "headers": [
+      {
+        "source": "/assets/**",
+        "headers": [{"key": "Cache-Control", "value": "public,max-age=3600"}]
+      }
+    ],
+    "rewrites": [
+      {
+        "source": "/api/**",
+        "run": {
+          "serviceId": "transpanda-api",
+          "region": "europe-west1",
+          "pinTag": true
+        }
+      }
+    ]
+  }
+}

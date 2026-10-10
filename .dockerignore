@@ -1,0 +1,8 @@
+*
+!Dockerfile
+!server.py
+!index.html
+!assets/
+!assets/**
+!runtime-data/
+!runtime-data/gtfs.sqlite

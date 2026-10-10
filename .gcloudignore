@@ -1,0 +1,9 @@
+.git/
+.github/
+public/
+firebase-public/
+.firebase/
+__pycache__/
+**/__pycache__/
+*.zip
+firebase-debug.log*

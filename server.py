@@ -1,6 +1,7 @@
 """Static site and read-only scheduled GTFS departures. Python standard library only."""
 import argparse
 import json
+import os
 import sqlite3
 from datetime import date, timedelta
 from functools import lru_cache
@@ -9,7 +10,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 ROOT = Path(__file__).resolve().parent
-DB = Path('/workspace/transpanda-data/gtfs.sqlite')
+DB = Path(os.environ.get('GTFS_DB','/workspace/transpanda-data/gtfs.sqlite'))
 
 @lru_cache(maxsize=64)
 def active_services(day):
@@ -115,7 +116,7 @@ class Handler(SimpleHTTPRequestHandler):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--port',type=int,default=8000)
+    parser.add_argument('--port',type=int,default=int(os.environ.get('PORT','8000')))
     parser.add_argument('--db',type=Path,default=DB)
     args = parser.parse_args()
     DB = args.db.resolve()
