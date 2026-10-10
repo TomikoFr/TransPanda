@@ -18,6 +18,12 @@ Le serveur Python fournit le site et une API locale de consultation des horaires
 
 ## Horaires publiés
 
+### Carte interactive
+
+Le bouton « Ouvrir la carte » affiche les arrêts du résultat de recherche ou de la ligne sélectionnée. Zoom, déplacement et recentrage sont disponibles. Choisir un arrêt ouvre sa fiche ; « Voir les horaires » sélectionne le quai et charge son tableau dans TransPanda. Les coordonnées viennent du GTFS et les fonds de carte d’OpenStreetMap, avec attribution visible. La carte ne trace pas de parcours entre les quais et ne montre pas la position des véhicules en temps réel.
+
+Leaflet 1.9.4 est fourni localement dans `assets/leaflet/`, avec sa licence MIT. Aucune clé d’API n’est nécessaire. Les tuiles ne sont demandées qu’après ouverture de la carte ; si le fond ne peut pas charger, un message apparaît et les marqueurs restent consultables. Le build copie récursivement les images et fichiers de la carte.
+
 ### Extension progressive à la France
 
 Les horaires restent intégrés directement dans TransPanda, sans annuaire qui renvoie vers data.gouv.fr. La couverture actuelle est la Nouvelle-Aquitaine. D’autres réseaux seront ajoutés progressivement après validation de leurs sources et de leur volume. Le GTFS SNCF TGV, Intercités et TER a été identifié mais n’est pas encore importé.

@@ -47,7 +47,8 @@ class Handler(SimpleHTTPRequestHandler):
             return self.respond({'error':'Catalogue national non généré.'},404)
         if not parsed.path.startswith('/api/'):
             # Serve only application assets, never scripts or a potential local database.
-            if parsed.path not in ['/', '/index.html', '/assets/style.css', '/assets/app.js', '/assets/gtfs.js', '/assets/static-gtfs.js', '/assets/national.js']:
+            map_asset = parsed.path in ['/assets/stops-map.js', '/assets/stops-map.css', '/assets/leaflet/leaflet.js', '/assets/leaflet/leaflet.css', '/assets/leaflet/images/marker-icon.png', '/assets/leaflet/images/marker-icon-2x.png', '/assets/leaflet/images/marker-shadow.png', '/assets/leaflet/images/layers.png', '/assets/leaflet/images/layers-2x.png']
+            if not map_asset and parsed.path not in ['/', '/index.html', '/assets/style.css', '/assets/app.js', '/assets/gtfs.js', '/assets/static-gtfs.js', '/assets/national.js']:
                 self.send_error(404)
                 return
             return super().do_GET()

@@ -64,7 +64,7 @@ printf '[TransPanda] Exporting static timetables…\n'
 build_stage="preparing website assets"
 cp index.html "$build_tmp/site/index.html"
 mkdir -p "$build_tmp/site/assets"
-cp assets/*.css assets/*.js "$build_tmp/site/assets/"
+cp -R assets/. "$build_tmp/site/assets/"
 "$python_bin" - "$build_tmp/site" <<'PY'
 import sys
 from pathlib import Path
