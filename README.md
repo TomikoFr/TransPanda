@@ -14,6 +14,19 @@ Le serveur Python fournit le site et une API locale de consultation des horaires
 
 ## Horaires publiés
 
+### Extension progressive à la France
+
+La section « Les réseaux de toute la France » propose un annuaire des jeux de données GTFS disponibles dans le catalogue officiel transport.data.gouv.fr. Il est actualisé pendant la publication quotidienne et permet une recherche par nom de réseau, éditeur ou territoire déclaré. Les liens ouvrent les sources officielles ; cette section ne fournit pas encore les horaires des réseaux supplémentaires. Les tableaux restent limités à la Nouvelle-Aquitaine. L’objectif retenu est de garder GitHub Pages et d’ajouter les horaires de réseaux progressivement après vérification de chaque source et du volume généré.
+
+Le prochain fichier à examiner est le GTFS SNCF TGV, Intercités et TER : `https://eu.ftp.opendatasoft.com/sncf/plandata/Export_OpenData_SNCF_GTFS_NewTripId.zip`. Il n’est pas encore téléchargé ni intégré. Son domaine doit être autorisé dans l’environnement pour l’inspection et la validation.
+
+Pour générer l’annuaire localement :
+
+```sh
+curl --fail --location --output /tmp/transpanda-catalog.json https://transport.data.gouv.fr/api/datasets
+python3 tools/build_national_index.py /tmp/transpanda-catalog.json public/data/national-networks.json
+```
+
 La recherche par ligne accepte un numéro, un nom ou un réseau. Choisir une ligne propose ses quais, classés par nom (tous sens et variantes confondus). Après sélection du quai et de la date, le tableau affiche uniquement les départs de cette ligne. Les numéros identiques sont distingués par le nom du réseau. La recherche de lignes est limitée à 60 résultats ; les correspondances exactes du numéro sont proposées en premier.
 
 ### GitHub Pages

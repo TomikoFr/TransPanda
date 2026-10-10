@@ -39,9 +39,14 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         parsed = urlparse(self.path)
+        if parsed.path == '/data/national-networks.json':
+            index = ROOT / 'public/data/national-networks.json'
+            if index.is_file():
+                return self.respond(json.loads(index.read_text(encoding='utf-8')))
+            return self.respond({'error':'Catalogue national non généré.'},404)
         if not parsed.path.startswith('/api/'):
             # Serve only application assets, never scripts or a potential local database.
-            if parsed.path not in ['/', '/index.html', '/assets/style.css', '/assets/app.js', '/assets/gtfs.js', '/assets/static-gtfs.js']:
+            if parsed.path not in ['/', '/index.html', '/assets/style.css', '/assets/app.js', '/assets/gtfs.js', '/assets/static-gtfs.js', '/assets/national.js']:
                 self.send_error(404)
                 return
             return super().do_GET()
