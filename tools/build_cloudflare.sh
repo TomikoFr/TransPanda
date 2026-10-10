@@ -1,6 +1,24 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -Eeuo pipefail
 cd "$(dirname "$0")/.."
+build_stage="checking build tools"
+trap 'build_code=$?; printf "\n[TransPanda] FAILED: %s (exit %s, line %s). Copy the error directly above this message.\n" "$build_stage" "$build_code" "$LINENO" >&2; exit "$build_code"' ERR
+
+# Workers and Pages build images may expose Python under different names.
+if command -v python3 >/dev/null 2>&1; then
+  python_bin=python3
+elif command -v python >/dev/null 2>&1 && python -c 'import sys; assert sys.version_info.major == 3'; then
+  python_bin=python
+else
+  printf '[TransPanda] Python 3 is missing. Set PYTHON_VERSION=3.12 in Cloudflare build variables, then rebuild.\n' >&2
+  exit 1
+fi
+printf '[TransPanda] Python: '
+"$python_bin" --version
+if ! command -v curl >/dev/null 2>&1; then
+  printf '[TransPanda] curl is missing in the build image.\n' >&2
+  exit 1
+fi
 
 # Work outside the checkout; never publish the ZIP or SQLite source database.
 build_tmp=$(mktemp -d)
@@ -8,18 +26,25 @@ trap 'rm -rf "$build_tmp"' EXIT
 if [ -n "${TRANSPANDA_GTFS_DB:-}" ]; then
   gtfs_database="$TRANSPANDA_GTFS_DB"
 else
-  curl --fail --location --retry 3 --connect-timeout 30 --max-time 600 --show-error \
+  build_stage="downloading the PIGMA GTFS archive"
+  printf '[TransPanda] Downloading published timetables from PIGMA…\n'
+  curl --fail --location --retry 3 --connect-timeout 30 --max-time 600 --silent --show-error \
     --output "$build_tmp/feed.zip" \
     https://www.pigma.org/public/opendata/nouvelle_aquitaine_mobilites/publication/naq-aggregated-gtfs.zip
-  python3 tools/import_gtfs.py "$build_tmp/feed.zip" "$build_tmp/gtfs.sqlite"
+  build_stage="importing the GTFS archive"
+  printf '[TransPanda] Importing GTFS…\n'
+  "$python_bin" tools/import_gtfs.py "$build_tmp/feed.zip" "$build_tmp/gtfs.sqlite"
   gtfs_database="$build_tmp/gtfs.sqlite"
 fi
 
-python3 tools/export_static.py "$gtfs_database" "$build_tmp/site/data"
+build_stage="exporting static timetables"
+printf '[TransPanda] Exporting static timetables…\n'
+"$python_bin" tools/export_static.py "$gtfs_database" "$build_tmp/site/data"
+build_stage="preparing website assets"
 cp index.html "$build_tmp/site/index.html"
 mkdir -p "$build_tmp/site/assets"
 cp assets/*.css assets/*.js "$build_tmp/site/assets/"
-python3 - "$build_tmp/site" <<'PY'
+"$python_bin" - "$build_tmp/site" <<'PY'
 import sys
 from pathlib import Path
 site = Path(sys.argv[1])
@@ -36,5 +61,6 @@ print(f'Cloudflare limits checked: {len(files)} files; largest {max(p.stat().st_
 PY
 # Replace only the generated deployment directory, after a successful build.
 mkdir -p public
+build_stage="replacing generated deployment files"
 find public -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
 cp -R "$build_tmp/site/." public/

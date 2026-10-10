@@ -5,7 +5,10 @@ import sqlite3
 import sys
 from pathlib import Path
 
-db = sqlite3.connect(sys.argv[1])
+database = Path(sys.argv[1]).resolve()
+if not database.is_file():
+    raise SystemExit(f'GTFS database missing: {database}')
+db = sqlite3.connect(f'file:{database}?mode=ro', uri=True)
 db.row_factory = sqlite3.Row
 out = Path(sys.argv[2])
 (out / 'departures').mkdir(parents=True, exist_ok=True)

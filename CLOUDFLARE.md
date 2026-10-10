@@ -8,6 +8,8 @@ If keeping this Worker with Git integration, select the `main` branch, leave the
 
 The Workers URL is only verified after a successful deployment and functional checks. A local networking refusal from the onboarding proxy does not establish the website's state.
 
+If deployment reports `Running custom build failed`, expand the logs above that summary. The build prints `[TransPanda] FAILED` with the failing stage, exit code and line. Copy that message and the error immediately above it. For a missing Python interpreter, set the Cloudflare build variable `PYTHON_VERSION` to `3.12`; the script also supports a Python 3 executable named `python`. No token is needed to download the public GTFS. A curl failure is a download problem; an import failure needs its Python traceback, not only the Wrangler summary.
+
 ## Pages alternative
 
 Use **Pages**, not a Worker. Connect `TomikoFr/TransPanda` and configure:
