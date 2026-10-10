@@ -11,5 +11,48 @@ async function findStops(){const term=el('stop-query').value.trim();if(term.leng
 el('find-stops').onclick=findStops;
 el('stop-query').addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();findStops();}});
 el('stop-query').addEventListener('input',()=>{++stopRequest;++departureRequest;el('stop-choice').replaceChildren(new Option('Recherchez un arrêt',''));el('gtfs-departures').replaceChildren();});
-el('gtfs-form').onsubmit=async event=>{event.preventDefault();const request=++departureRequest;el('gtfs-departures').replaceChildren();el('gtfs-status').textContent='Chargement des horaires…';try{const query=new URLSearchParams({stop:el('stop-choice').value,date:el('gtfs-date').value,time:el('gtfs-time').value});const result=await api('/api/departures?'+query);if(request!==departureRequest)return;el('gtfs-status').textContent=result.departures.length?`${result.departures.length} départs prévus le ${result.date.split('-').reverse().join('/')}.`:'Aucun départ prévu après cette heure pour ce quai et cette date dans le fichier importé. Vérifiez la date ou un autre quai.';const list=document.createElement('div');list.className='departure-list';for(const departure of result.departures){const row=document.createElement('article');row.className='departure-row';const time=document.createElement('strong');time.textContent=departure.time;const description=document.createElement('div');const line=document.createElement('strong');line.textContent=`${departure.route_short_name||departure.route_long_name} → ${departure.trip_headsign||'Direction non renseignée'}`;const network=document.createElement('p');network.textContent=departure.agency_name||'Réseau non renseigné';description.append(line,network);const tag=document.createElement('span');tag.className='mode';tag.textContent='Prévu';row.append(time,description,tag);list.append(row);}el('gtfs-departures').append(list);}catch(error){if(request===departureRequest)el('gtfs-status').textContent=error.message;}};
+el('gtfs-form').onsubmit=async event=>{event.preventDefault();const request=++departureRequest;el('gtfs-departures').replaceChildren();el('gtfs-status').textContent='Chargement des horaires…';try{const query=new URLSearchParams({stop:el('stop-choice').value,date:el('gtfs-date').value,time:el('gtfs-time').value});const result=await api('/api/departures?'+query);if(request!==departureRequest)return;el('gtfs-status').textContent=result.departures.length?`${result.departures.length} départs prévus le ${result.date.split('-').reverse().join('/')}.`:'Aucun départ prévu après cette heure pour ce quai et cette date dans le fichier importé. Vérifiez la date ou un autre quai.';renderTimetable(result);}catch(error){if(request===departureRequest)el('gtfs-status').textContent=error.message;}};
 api('/api/info').then(info=>{el('gtfs-source').textContent=`Source : Nouvelle-Aquitaine Mobilités via PIGMA · ${info.counts.agency} réseaux déclarés · ${info.counts.stops.toLocaleString('fr-FR')} arrêts et quais · import du ${new Date(info.imported_at).toLocaleDateString('fr-FR')}. Couverture selon le fichier publié, sans garantie d’exhaustivité.`;}).catch(()=>{el('gtfs-status').textContent='Les horaires ne sont pas disponibles. Vérifiez que les données GTFS ont été incluses dans le déploiement.';});
+
+function renderTimetable(result) {
+  if (!result.departures.length) return;
+  const wrapper = document.createElement('div');
+  wrapper.className = 'timetable-scroll';
+  wrapper.tabIndex = 0;
+  wrapper.setAttribute('role', 'region');
+  wrapper.setAttribute('aria-label', 'Tableau des horaires, défilement horizontal possible');
+  const table = document.createElement('table');
+  table.className = 'timetable-table';
+  const caption = table.createCaption();
+  const selected = el('stop-choice').selectedOptions[0];
+  caption.textContent = `${selected?.textContent || 'Arrêt sélectionné'} · ${result.date.split('-').reverse().join('/')} · horaires prévus`;
+  const header = table.createTHead().insertRow();
+  for (const label of ['Départ', 'Ligne', 'Direction', 'Réseau']) {
+    const cell = document.createElement('th');
+    cell.scope = 'col';
+    cell.textContent = label;
+    header.append(cell);
+  }
+  const body = table.createTBody();
+  for (const departure of result.departures) {
+    const row = body.insertRow();
+    const time = document.createElement('th');
+    time.scope = 'row';
+    time.textContent = departure.time;
+    row.append(time);
+    for (const value of [departure.route_short_name || departure.route_long_name || 'Non renseignée', departure.trip_headsign || 'Direction non renseignée', departure.agency_name || 'Réseau non renseigné']) {
+      const cell = row.insertCell();
+      cell.textContent = value;
+    }
+  }
+  wrapper.append(table);
+  el('gtfs-departures').append(wrapper);
+}
+// Clear stale results when a different platform or date is selected.
+for (const id of ['stop-choice', 'gtfs-date', 'gtfs-time']) {
+  el(id).addEventListener('change', () => {
+    ++departureRequest;
+    el('gtfs-departures').replaceChildren();
+    el('gtfs-status').textContent = 'Cliquez sur « Afficher les départs » pour consulter les horaires de cette sélection.';
+  });
+}

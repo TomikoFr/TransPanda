@@ -60,6 +60,21 @@ p { line-height: 1.75; }
 .departure-row > div { min-width: 0; overflow-wrap: anywhere; }
 .departure-row p { margin: 5px 0 0; color: var(--muted); font-size: 12px; }
 .departure-row .mode { margin-left: auto; }
+.timetable-scroll { overflow-x: auto; max-width: 100%; border: 1px solid var(--line); border-radius: 14px; background: white; }
+.timetable-table { width: 100%; min-width: 540px; border-collapse: collapse; text-align: left; }
+.timetable-table caption { padding: 18px 20px; text-align: left; font-weight: 700; color: var(--green-dark); border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+.timetable-table thead { background: var(--green); color: white; }
+.timetable-table th, .timetable-table td { padding: 14px 20px; vertical-align: top; }
+.timetable-table thead th { font-size: 12px; font-weight: 600; }
+.timetable-table tbody th { font-size: 19px; color: var(--green); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.timetable-table tbody tr + tr { border-top: 1px solid var(--line); }
+.timetable-table tbody tr:nth-child(even) { background: #f5f8f1; }
+.timetable-table tbody tr:hover { background: #eaf2e3; }
+.timetable-table td:last-child { color: var(--muted); font-size: 12px; }
+@media (max-width: 720px) {
+  .timetable-table th, .timetable-table td { padding: 12px; }
+  .timetable-table caption { padding: 14px; font-size: 12px; }
+}
 
 /* Demo itinerary workspace. */
 .intro { padding: 48px 0 32px; position: relative; }
