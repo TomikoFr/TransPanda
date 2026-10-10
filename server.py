@@ -41,7 +41,7 @@ class Handler(SimpleHTTPRequestHandler):
         parsed = urlparse(self.path)
         if not parsed.path.startswith('/api/'):
             # Serve only application assets, never scripts or a potential local database.
-            if parsed.path not in ['/', '/index.html', '/assets/style.css', '/assets/app.js', '/assets/gtfs.js']:
+            if parsed.path not in ['/', '/index.html', '/assets/style.css', '/assets/app.js', '/assets/gtfs.js', '/assets/static-gtfs.js']:
                 self.send_error(404)
                 return
             return super().do_GET()

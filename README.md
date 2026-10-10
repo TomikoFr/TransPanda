@@ -14,6 +14,22 @@ Le serveur Python fournit le site et une API locale de consultation des horaires
 
 ## Horaires publiés
 
+### GitHub Pages
+
+Le workflow `.github/workflows/pages.yml` télécharge le GTFS, l’importe et exporte des fichiers JSON compacts par quai. Il déploie le site et ces données sur GitHub Pages à chaque push sur `main` et chaque jour. Dans le dépôt GitHub, ouvrir **Settings → Pages → Source → GitHub Actions**. Le premier déploiement doit terminer avant que les horaires fonctionnent. Aucun serveur Python n’est exécuté par Pages : les calendriers sont appliqués dans le navigateur et seul le fichier du quai choisi est chargé.
+
+Pour tester ce mode localement :
+
+```sh
+python3 tools/export_static.py /workspace/transpanda-data/gtfs.sqlite public/data
+cp index.html public/
+mkdir -p public/assets
+cp assets/*.js assets/*.css public/assets/
+python3 -m http.server 8003 --directory public
+```
+
+Le navigateur utilise automatiquement les fichiers statiques lorsque l’API Python est absente. Le dossier généré `public/` est exclu du dépôt Git. Le workflow renouvelle les données ; une erreur de téléchargement bloque le nouveau déploiement et laisse la dernière publication disponible.
+
 Le panneau « Les horaires à votre arrêt » utilise le GTFS agrégé de Nouvelle-Aquitaine Mobilités, téléchargé depuis PIGMA. Il affiche les départs prévus d’un quai, selon la date, les calendriers hebdomadaires et leurs exceptions. Ce ne sont pas des données de retard en temps réel. Les heures sont celles de France, y compris les services GTFS qui dépassent minuit. La recherche est limitée à 40 quais et les résultats à 30 départs jusqu’à la fin du jour choisi. Les dates hors calendrier peuvent ne produire aucun résultat.
 
 La base est conservée hors du dépôt dans `/workspace/transpanda-data/gtfs.sqlite`. Pour la préparer ou actualiser les données :

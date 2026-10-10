@@ -1,0 +1,45 @@
+name: Publish site and scheduled timetables
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '20 4 * * *'
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download and prepare GTFS
+        run: |
+          mkdir -p /tmp/gtfs public/assets
+          curl --fail --location --retry 3 --output /tmp/gtfs/feed.zip https://www.pigma.org/public/opendata/nouvelle_aquitaine_mobilites/publication/naq-aggregated-gtfs.zip
+          python tools/import_gtfs.py /tmp/gtfs/feed.zip /tmp/gtfs/gtfs.sqlite
+          python tools/export_static.py /tmp/gtfs/gtfs.sqlite public/data
+          cp index.html public/
+          cp assets/*.css assets/*.js public/assets/
+          touch public/.nojekyll
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
