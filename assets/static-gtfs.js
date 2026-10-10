@@ -45,7 +45,9 @@ window.staticGTFS = (() => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(day.getTime()) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) throw new Error('Date ou heure invalide.');
     const [h,m] = time.split(':').map(Number);
     const data = await catalog();
-    const rows = await load(`departures/${stop.file}.json`);
+    const rows = data.departures_chunk_size
+      ? (await load(`departures/${Math.floor(stop.file/data.departures_chunk_size)}.json`))[String(stop.file)] || []
+      : await load(`departures/${stop.file}.json`);
     const departures = [];
     for (let offset=0; offset<3; offset++) {
       const serviceDay = new Date(day.getTime()-offset*86400000);
