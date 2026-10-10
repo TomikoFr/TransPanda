@@ -1,5 +1,15 @@
 # Deploy TransPanda on Cloudflare Pages
 
+## Existing Workers deployment
+
+The existing address `https://transpanda.tomikofauveau.workers.dev/` uses **Workers**, not Pages. It can also serve the static site using Workers Static Assets. `wrangler.toml` configures the worker name `transpanda`, the generated `public/` assets and their build command.
+
+If keeping this Worker with Git integration, select the `main` branch, leave the root directory at the repository root, and use **Deploy command: `npx wrangler deploy`**. Wrangler executes the build command defined in `wrangler.toml`. Leave the separate build command blank to avoid building twice. If the interface requires a separate build command, use `bash tools/build_cloudflare.sh`; the additional rebuild during deploy is redundant but produces the same assets. No account ID, API token or secret is committed. Cloudflare's Git integration authenticates its own deployment.
+
+The Workers URL is only verified after a successful deployment and functional checks. A local networking refusal from the onboarding proxy does not establish the website's state.
+
+## Pages alternative
+
 Use **Pages**, not a Worker. Connect `TomikoFr/TransPanda` and configure:
 
 | Setting | Value |

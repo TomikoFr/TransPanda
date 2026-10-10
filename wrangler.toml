@@ -1,0 +1,10 @@
+name = "transpanda"
+compatibility_date = "2026-10-10"
+
+# Workers Static Assets: no paid API server is required.
+[assets]
+directory = "./public"
+not_found_handling = "404-page"
+
+[build]
+command = "bash tools/build_cloudflare.sh"
