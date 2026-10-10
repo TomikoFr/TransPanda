@@ -12,6 +12,8 @@ If deployment reports `Running custom build failed`, expand the logs above that 
 
 ## Pages alternative
 
+Cloudflare's Python 3.13.3 build image was observed to lack `_sqlite3`. The build now probes SQLite before downloading data, selects a working system Python if available, or installs the pinned `pysqlite3-binary` wheel into a temporary directory. Only the import/export tools use this fallback; no Python dependency is deployed to the website. TLS and package verification remain enabled, and no compilation or root access is needed.
+
 Use **Pages**, not a Worker. Connect `TomikoFr/TransPanda` and configure:
 
 | Setting | Value |

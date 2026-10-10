@@ -23,6 +23,27 @@ fi
 # Work outside the checkout; never publish the ZIP or SQLite source database.
 build_tmp=$(mktemp -d)
 trap 'rm -rf "$build_tmp"' EXIT
+build_stage="checking SQLite support"
+if ! "$python_bin" -c 'import sqlite3; sqlite3.connect(":memory:").execute("SELECT 1")' >/dev/null 2>&1; then
+  sqlite_python=""
+  for candidate in /usr/bin/python3 /usr/local/bin/python3; do
+    if [ -x "$candidate" ] && "$candidate" -c 'import sqlite3; sqlite3.connect(":memory:").execute("SELECT 1")' >/dev/null 2>&1; then
+      sqlite_python="$candidate"
+      break
+    fi
+  done
+  if [ -n "$sqlite_python" ]; then
+    python_bin="$sqlite_python"
+    printf '[TransPanda] Using system Python with SQLite: %s\n' "$python_bin"
+  else
+    build_stage="installing the binary SQLite driver"
+    printf '[TransPanda] Python has no SQLite module; installing the verified PyPI binary driver…\n'
+    "$python_bin" -m pip install --disable-pip-version-check --no-input --no-cache-dir \
+      --only-binary=:all: --target "$build_tmp/python" 'pysqlite3-binary==0.5.4.post2'
+    export PYTHONPATH="$build_tmp/python${PYTHONPATH:+:$PYTHONPATH}"
+  fi
+fi
+"$python_bin" -c 'import sys; sys.path.insert(0,"tools"); from sqlite_support import sqlite3; sqlite3.connect(":memory:").execute("SELECT 1"); print("[TransPanda] SQLite ready:",sqlite3.sqlite_version)'
 if [ -n "${TRANSPANDA_GTFS_DB:-}" ]; then
   gtfs_database="$TRANSPANDA_GTFS_DB"
 else

@@ -1,7 +1,7 @@
 """Export a compact, per-platform timetable for static hosting."""
 import itertools
 import json
-import sqlite3
+from sqlite_support import sqlite3
 import sys
 from pathlib import Path
 

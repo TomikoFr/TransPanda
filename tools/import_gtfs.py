@@ -3,7 +3,7 @@ import csv
 import io
 import json
 import os
-import sqlite3
+from sqlite_support import sqlite3
 import sys
 import zipfile
 from datetime import datetime, timezone
