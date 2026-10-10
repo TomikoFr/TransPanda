@@ -200,3 +200,5 @@ footer .brand { font-size: 18px; }
   html { scroll-behavior: auto; }
   *, *::before, *::after { transition: none !important; animation: none !important; }
 }
+
+.line-search{margin-bottom:20px;max-width:720px}.line-search h3{margin:0;font-size:19px}.line-search p{font-size:13px;color:var(--muted)}.line-search>label{display:block;margin-top:16px}#line-query{width:100%;min-width:0;border:0;background:transparent;color:var(--ink);padding:5px 0}#find-lines{border:1px solid var(--line);background:white;color:var(--green);border-radius:8px;padding:10px 14px;font-weight:700}#line-status:empty{display:none}@media(max-width:720px){#line-query{font-size:16px}.line-search{padding:18px}}

@@ -17,6 +17,11 @@ for i,s in enumerate(stops): s['file'] = i
 write('stops.json', stops)
 routes = [dict(r) for r in db.execute('SELECT r.route_id,r.route_short_name,r.route_long_name,r.route_type,a.agency_name FROM routes r LEFT JOIN agency a ON a.agency_id=r.agency_id')]
 route_numbers = {r['route_id']:i for i,r in enumerate(routes)}
+route_stops = {}
+for row in db.execute('SELECT DISTINCT t.route_id,st.stop_id FROM stop_times st JOIN trips t ON t.trip_id=st.trip_id'):
+    if row['stop_id'] in stop_numbers:
+        route_stops.setdefault(row['route_id'], []).append(stop_numbers[row['stop_id']])
+write('route-stops.json', route_stops)
 services = [r[0] for r in db.execute('SELECT DISTINCT service_id FROM trips')]
 service_numbers = {s:i for i,s in enumerate(services)}
 calendars = []

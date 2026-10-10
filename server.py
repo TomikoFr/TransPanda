@@ -52,7 +52,15 @@ class Handler(SimpleHTTPRequestHandler):
                 db.row_factory = sqlite3.Row
                 if parsed.path == '/api/info':
                     return self.respond(json.loads(db.execute('SELECT data FROM metadata').fetchone()[0]))
+                if parsed.path == '/api/routes':
+                    term = query.get('q',[''])[0].strip()
+                    term = term.replace('\\','\\\\').replace('%','\\%').replace('_','\\_')
+                    rows = db.execute("SELECT r.route_id,r.route_short_name,r.route_long_name,a.agency_name FROM routes r LEFT JOIN agency a ON a.agency_id=r.agency_id WHERE (r.route_short_name || ' ' || r.route_long_name || ' ' || coalesce(a.agency_name,'')) LIKE ? ESCAPE '\\' ORDER BY CASE WHEN lower(r.route_short_name)=lower(?) THEN 0 ELSE 1 END,r.route_short_name LIMIT 60", ('%'+term+'%',query.get('q',[''])[0].strip()))
+                    return self.respond([dict(r) for r in rows])
                 if parsed.path == '/api/stops':
+                    if 'route' in query:
+                        rows = db.execute("SELECT DISTINCT s.stop_id,s.stop_name,s.stop_lat,s.stop_lon FROM stops s JOIN stop_times st ON st.stop_id=s.stop_id JOIN trips t ON t.trip_id=st.trip_id WHERE t.route_id=? AND (s.location_type='' OR s.location_type='0') ORDER BY s.stop_name", (query['route'][0],))
+                        return self.respond([dict(r) for r in rows])
                     term = query.get('q',[''])[0].strip()
                     if len(term) < 2: return self.respond([])
                     term = term.replace('\\','\\\\').replace('%','\\%').replace('_','\\_')
@@ -65,7 +73,7 @@ class Handler(SimpleHTTPRequestHandler):
                 stop = query.get('stop',[''])[0]
                 if not db.execute('SELECT 1 FROM stops WHERE stop_id=?',(stop,)).fetchone():
                     return self.respond({'error':'Arrêt inconnu'},404)
-                rows = db.execute('''SELECT st.departure_time,st.pickup_type,t.service_id,t.trip_headsign,t.trip_id,r.route_short_name,r.route_long_name,r.route_type,a.agency_name
+                rows = db.execute('''SELECT st.departure_time,st.pickup_type,t.service_id,t.trip_headsign,t.trip_id,r.route_id,r.route_short_name,r.route_long_name,r.route_type,a.agency_name
                     FROM stop_times st JOIN trips t ON t.trip_id=st.trip_id JOIN routes r ON r.route_id=t.route_id
                     LEFT JOIN agency a ON a.agency_id=r.agency_id WHERE st.stop_id=?''',(stop,)).fetchall()
                 results = []
@@ -74,6 +82,7 @@ class Handler(SimpleHTTPRequestHandler):
                     service_day = day - timedelta(days=offset)
                     services = active_services(service_day)
                     for row in rows:
+                        if 'route' in query and row['route_id'] != query['route'][0]: continue
                         raw = seconds(row['departure_time'])
                         if raw is None or row['service_id'] not in services or row['pickup_type']=='1': continue
                         relative = raw-offset*86400

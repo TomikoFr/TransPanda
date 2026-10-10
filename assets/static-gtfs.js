@@ -24,7 +24,16 @@ window.staticGTFS = (() => {
   return async path => {
     const url = new URL(path, document.baseURI);
     if (url.pathname.endsWith('/info')) return (await catalog()).info;
+    if (url.pathname.endsWith('/routes')) {
+      const term = normalize(url.searchParams.get('q') || '').trim();
+      return (await catalog()).routes.filter(r => normalize(`${r.route_short_name} ${r.route_long_name} ${r.agency_name}`).includes(term)).sort((a,b) => Number(normalize(b.route_short_name)===term)-Number(normalize(a.route_short_name)===term) || a.route_short_name.localeCompare(b.route_short_name,'fr',{numeric:true})).slice(0,60);
+    }
     if (url.pathname.endsWith('/stops')) {
+      if (url.searchParams.has('route')) {
+        const mapping = await load('route-stops.json');
+        const all = await stops();
+        return (mapping[url.searchParams.get('route')] || []).map(i => all[i]).sort((a,b) => a.stop_name.localeCompare(b.stop_name,'fr'));
+      }
       const term = normalize(url.searchParams.get('q') || '').trim();
       return term.length < 2 ? [] : (await stops()).filter(s => normalize(s.stop_name).includes(term)).slice(0,40);
     }
@@ -42,6 +51,7 @@ window.staticGTFS = (() => {
       const serviceDay = new Date(day.getTime()-offset*86400000);
       const services = active(data,serviceDay);
       for (const [raw,service,route,headsign] of rows) {
+        if (url.searchParams.has('route') && data.routes[route].route_id !== url.searchParams.get('route')) continue;
         const seconds = raw-offset*86400;
         if (services.has(service) && seconds>=h*3600+m*60 && seconds<86400) {
           departures.push({...data.routes[route],trip_headsign:headsign,seconds,time:`${String(Math.floor(seconds/3600)).padStart(2,'0')}:${String(Math.floor(seconds/60)%60).padStart(2,'0')}`});

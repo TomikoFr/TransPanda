@@ -14,6 +14,8 @@ Le serveur Python fournit le site et une API locale de consultation des horaires
 
 ## Horaires publiés
 
+La recherche par ligne accepte un numéro, un nom ou un réseau. Choisir une ligne propose ses quais, classés par nom (tous sens et variantes confondus). Après sélection du quai et de la date, le tableau affiche uniquement les départs de cette ligne. Les numéros identiques sont distingués par le nom du réseau. La recherche de lignes est limitée à 60 résultats ; les correspondances exactes du numéro sont proposées en premier.
+
 ### GitHub Pages
 
 Le workflow `.github/workflows/pages.yml` télécharge le GTFS, l’importe et exporte des fichiers JSON compacts par quai. Il déploie le site et ces données sur GitHub Pages à chaque push sur `main` et chaque jour. Dans le dépôt GitHub, ouvrir **Settings → Pages → Source → GitHub Actions**. Le premier déploiement doit terminer avant que les horaires fonctionnent. Aucun serveur Python n’est exécuté par Pages : les calendriers sont appliqués dans le navigateur et seul le fichier du quai choisi est chargé.
