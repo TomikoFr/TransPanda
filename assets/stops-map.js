@@ -1,9 +1,16 @@
-// Only the stops returned by the current search or line selection are mapped.
-// The basemap is requested after the visitor explicitly opens the map.
+// Browse nearby stops on opening, or focus on a stop search / selected line.
+// Both the complete stop index and basemap are loaded on demand.
 (function () {
   'use strict';
 
   let stops = [];
+  let allStops = [];
+  let allStopsPromise;
+  let loadStops;
+  let mode = 'browse';
+  let loading = false;
+  let loadError = '';
+  let visibleCount = 0;
   let omitted = 0;
   let selectedId = '';
   let section;
@@ -11,8 +18,10 @@
   let status;
   let openButton;
   let recenterButton;
+  let browseButton;
   let map;
   let markerLayer;
+  let clusterLayer;
   let onSelect = function () {};
   let tileFailed = false;
   const markers = new Map();
@@ -26,11 +35,23 @@
 
   function updateStatus() {
     if (!status) return;
-    const count = stops.length;
+    const count = mode === 'browse' ? visibleCount : stops.length;
     const plural = count === 1 ? '' : 's';
-    let message = count
-      ? `${count} arrêt${plural} ${map ? 'affiché' : 'localisé'}${plural}. Cliquez sur un repère pour consulter ses horaires prévus.`
-      : 'Recherchez un arrêt ou choisissez une ligne pour situer ses arrêts sur la carte.';
+    let message;
+    if (mode === 'browse' && loading) {
+      message = 'Chargement des arrêts sur la carte…';
+    } else if (mode === 'browse' && loadError) {
+      message = 'Les arrêts n’ont pas pu être chargés. Cliquez sur « Tous les arrêts » pour réessayer, ou recherchez une ligne.';
+    } else if (mode === 'browse' && !map) {
+      message = 'Les arrêts apparaîtront dès l’ouverture de la carte. Zoomez pour distinguer les quais.';
+    } else if (count) {
+      message = `${count} arrêt${plural} ${map ? 'affiché' : 'localisé'}${plural}${mode === 'browse' ? ' dans cette zone' : ''}. Cliquez sur un repère pour consulter ses horaires prévus.`;
+      if (mode === 'browse') message += ' Les nombres regroupent des arrêts proches : cliquez pour zoomer.';
+    } else {
+      message = mode === 'browse'
+        ? 'Aucun arrêt dans cette zone du fichier de Nouvelle-Aquitaine. Déplacez la carte ou cliquez sur « Recentrer ».'
+        : 'Aucun arrêt à afficher pour cette recherche. Cliquez sur « Tous les arrêts » pour explorer la carte.';
+    }
     if (omitted) {
       message += ` ${omitted} arrêt${omitted === 1 ? '' : 's'} sans coordonnées utilisables.`;
     }
@@ -51,13 +72,13 @@
   function fitStops() {
     if (!map) return;
     map.invalidateSize();
-    if (stops.length) {
+    if (mode === 'filtered' && stops.length) {
       map.fitBounds(stops.map(stop => [stop.lat, stop.lon]), {
         padding: [28, 28],
         maxZoom: 16
       });
     } else {
-      map.setView([44.84, -0.58], 10);
+      map.setView([44.84, -0.58], 12);
     }
   }
 
@@ -76,7 +97,7 @@
     button.textContent = 'Voir les horaires';
     button.addEventListener('click', function () {
       selectStop(stop.stop_id);
-      onSelect(stop.stop_id);
+      onSelect(stop.stop_id, stop, mode === 'browse');
     });
     popup.append(name, identifier, button);
     return popup;
@@ -84,9 +105,64 @@
 
   function renderMarkers() {
     if (!map) return;
-    markerLayer.clearLayers();
-    markers.clear();
-    for (const stop of stops) {
+    clusterLayer.clearLayers();
+    let displayed = stops;
+    if (mode === 'browse') {
+      const bounds = map.getBounds();
+      displayed = allStops.filter(stop => bounds.contains([stop.lat, stop.lon]));
+      visibleCount = displayed.length;
+      // Keep a regional view light on mobile: zooming reveals individual stops.
+      if (map.getZoom() < 16) {
+        const groups = new Map();
+        const selected = [];
+        for (const stop of displayed) {
+          // Keep the selected stop accessible while its popup pans the map.
+          if (stop.stop_id === selectedId) {
+            selected.push(stop);
+            continue;
+          }
+          const point = map.project([stop.lat, stop.lon]);
+          const cell = `${Math.floor(point.x / 64)}:${Math.floor(point.y / 64)}`;
+          if (!groups.has(cell)) groups.set(cell, []);
+          groups.get(cell).push(stop);
+        }
+        displayed = selected;
+        for (const group of groups.values()) {
+          if (group.length === 1) {
+            displayed.push(group[0]);
+            continue;
+          }
+          const lat = group.reduce((sum, stop) => sum + stop.lat, 0) / group.length;
+          const lon = group.reduce((sum, stop) => sum + stop.lon, 0) / group.length;
+          const count = String(group.length);
+          const icon = window.L.divIcon({
+            className: 'stop-map-cluster',
+            html: `<span>${count}</span>`,
+            iconSize: [42, 42],
+            iconAnchor: [21, 21]
+          });
+          window.L.marker([lat, lon], {
+            icon: icon,
+            title: `${count} arrêts proches — cliquez pour zoomer`,
+            keyboard: true
+          }).on('click', function () {
+            selectedId = '';
+            map.closePopup();
+            map.fitBounds(group.map(stop => [stop.lat, stop.lon]), { padding: [30, 30], maxZoom: 19 });
+          }).addTo(clusterLayer);
+        }
+      }
+    }
+    const ids = new Set(displayed.map(stop => stop.stop_id));
+    for (const [id, marker] of markers) {
+      if (!ids.has(id)) {
+        markerLayer.removeLayer(marker);
+        markers.delete(id);
+      }
+    }
+    for (const stop of displayed) {
+      // Reuse visible markers so moving the map does not destroy open popups.
+      if (markers.has(stop.stop_id)) continue;
       const title = `${stop.stop_name} · ${stop.stop_id}`;
       const marker = window.L.marker([stop.lat, stop.lon], {
         title: title,
@@ -101,10 +177,60 @@
       marker.addTo(markerLayer);
       markers.set(stop.stop_id, marker);
     }
-    fitStops();
     highlightSelection();
-    const selected = markers.get(selectedId);
-    if (selected) selected.openPopup();
+    updateStatus();
+  }
+
+  function normalizeStops(values) {
+    const unique = new Map();
+    let invalid = 0;
+    for (const value of Array.isArray(values) ? values : []) {
+      if (!value || typeof value.stop_id !== 'string' || !value.stop_id.trim() ||
+          typeof value.stop_name !== 'string' || !value.stop_name.trim()) {
+        invalid++;
+        continue;
+      }
+      const lat = coordinate(value.stop_lat, 90);
+      const lon = coordinate(value.stop_lon, 180);
+      if (lat === null || lon === null) {
+        invalid++;
+        continue;
+      }
+      unique.set(value.stop_id, {
+        stop_id: value.stop_id,
+        stop_name: value.stop_name,
+        lat: lat,
+        lon: lon
+      });
+    }
+    return { stops: Array.from(unique.values()), omitted: invalid };
+  }
+
+  function ensureAllStops() {
+    if (allStopsPromise || typeof loadStops !== 'function') return;
+    loading = true;
+    loadError = '';
+    updateStatus();
+    allStopsPromise = Promise.resolve().then(loadStops).then(values => {
+      allStops = normalizeStops(values).stops;
+      loading = false;
+      if (mode === 'browse') renderMarkers();
+    }).catch(error => {
+      loading = false;
+      loadError = error.message;
+      allStopsPromise = undefined;
+      updateStatus();
+    });
+  }
+
+  function showAllStops() {
+    mode = 'browse';
+    selectedId = '';
+    omitted = 0;
+    if (map) {
+      ensureAllStops();
+      renderMarkers();
+    }
     updateStatus();
   }
 
@@ -117,6 +243,7 @@
     mapElement.hidden = false;
     map = window.L.map(mapElement, { scrollWheelZoom: false });
     markerLayer = window.L.layerGroup().addTo(map);
+    clusterLayer = window.L.layerGroup().addTo(map);
     window.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -126,18 +253,24 @@
     }).addTo(map);
     openButton.hidden = true;
     recenterButton.disabled = false;
+    map.setView([44.84, -0.58], 12);
+    map.on('moveend', renderMarkers);
+    if (mode === 'browse') ensureAllStops();
+    else fitStops();
     renderMarkers();
   }
 
-  function mount(container, callback) {
+  function mount(container, callback, loader) {
     if (!container || typeof container.append !== 'function') return;
     if (map) map.remove();
     if (section) section.remove();
     map = undefined;
     markerLayer = undefined;
+    clusterLayer = undefined;
     markers.clear();
     tileFailed = false;
     onSelect = typeof callback === 'function' ? callback : function () {};
+    loadStops = loader;
 
     section = document.createElement('section');
     section.className = 'stop-map-section';
@@ -149,7 +282,7 @@
     heading.textContent = 'Les arrêts sur la carte';
     const description = document.createElement('p');
     description.className = 'stop-map-description';
-    description.textContent = 'Situez les arrêts de votre recherche ou de la ligne choisie. Le fond de carte OpenStreetMap se charge à votre demande.';
+    description.textContent = 'Explorez les arrêts de Nouvelle-Aquitaine dès l’ouverture, ou affichez ceux d’une recherche ou d’une ligne. Zoomez sur un groupe pour voir ses quais.';
     const actions = document.createElement('div');
     actions.className = 'stop-map-actions';
     openButton = document.createElement('button');
@@ -164,7 +297,12 @@
     recenterButton.textContent = 'Recentrer';
     recenterButton.disabled = true;
     recenterButton.addEventListener('click', fitStops);
-    actions.append(openButton, recenterButton);
+    browseButton = document.createElement('button');
+    browseButton.type = 'button';
+    browseButton.className = 'stop-map-recenter';
+    browseButton.textContent = 'Tous les arrêts';
+    browseButton.addEventListener('click', showAllStops);
+    actions.append(openButton, browseButton, recenterButton);
     header.append(heading, actions);
 
     mapElement = document.createElement('div');
@@ -183,29 +321,12 @@
   }
 
   function setStops(values) {
-    const unique = new Map();
-    omitted = 0;
-    for (const value of Array.isArray(values) ? values : []) {
-      if (!value || typeof value.stop_id !== 'string' || !value.stop_id.trim() ||
-          typeof value.stop_name !== 'string' || !value.stop_name.trim()) {
-        omitted++;
-        continue;
-      }
-      const lat = coordinate(value.stop_lat, 90);
-      const lon = coordinate(value.stop_lon, 180);
-      if (lat === null || lon === null) {
-        omitted++;
-        continue;
-      }
-      unique.set(value.stop_id, {
-        stop_id: value.stop_id,
-        stop_name: value.stop_name,
-        lat: lat,
-        lon: lon
-      });
-    }
-    stops = Array.from(unique.values());
-    if (selectedId && !unique.has(selectedId)) selectedId = '';
+    mode = 'filtered';
+    const normalized = normalizeStops(values);
+    stops = normalized.stops;
+    omitted = normalized.omitted;
+    if (selectedId && !stops.some(stop => stop.stop_id === selectedId)) selectedId = '';
+    fitStops();
     renderMarkers();
     updateStatus();
   }
@@ -224,8 +345,7 @@
   }
 
   function clear() {
-    selectedId = '';
-    setStops([]);
+    showAllStops();
   }
 
   window.TransPandaMap = { mount: mount, setStops: setStops, selectStop: selectStop, clear: clear };

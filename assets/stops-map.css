@@ -55,6 +55,17 @@
 .stop-map-canvas .leaflet-control-zoom a { color: var(--ink); }
 .stop-map-canvas .leaflet-marker-icon:focus-visible { outline: 3px solid #bd8e2c; outline-offset: 3px; }
 .stop-map-marker-selected { filter: drop-shadow(0 0 4px var(--green)); }
+.stop-map-cluster {
+  display: grid;
+  place-items: center;
+  border: 3px solid white;
+  border-radius: 50%;
+  background: var(--green);
+  color: white;
+  box-shadow: 0 2px 8px #16382d55;
+  font: 700 13px/1 'DM Sans', system-ui, sans-serif;
+}
+.stop-map-cluster:focus-visible { outline: 3px solid #bd8e2c; outline-offset: 3px; }
 .stop-map-popup { min-width: 180px; max-width: 240px; color: var(--ink); font: 14px/1.5 'DM Sans', system-ui, sans-serif; }
 .stop-map-popup-name { display: block; overflow-wrap: anywhere; }
 .stop-map-popup p.stop-map-popup-id { margin: 7px 0 12px; font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }

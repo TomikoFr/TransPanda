@@ -71,11 +71,19 @@ el('line-choice').onchange=async()=>{window.TransPandaMap.clear();const request=
 const mapHost=document.createElement('div');
 mapHost.id='stops-map-host';
 el('gtfs-status').before(mapHost);
-window.TransPandaMap.mount(mapHost,stopId=>{
+window.TransPandaMap.mount(mapHost,(stopId,stop,browsing)=>{
+  if(browsing){
+    ++stopRequest;++departureRequest;
+    selectedRoute='';
+    el('line-choice').value='';
+    el('stop-query').required=false;
+    el('stop-query').value=stop.stop_name;
+    el('stop-choice').replaceChildren(new Option(`${stop.stop_name} · ${stop.stop_id}`,stopId));
+  }
   if(![...el('stop-choice').options].some(option=>option.value===stopId))return;
   el('stop-choice').value=stopId;
   el('stop-choice').dispatchEvent(new Event('change'));
   el('gtfs-form').requestSubmit();
   if(el('gtfs-form').checkValidity())el('gtfs-status').scrollIntoView({behavior:'smooth',block:'start'});
-});
+},()=>api('/api/stops?all=1'));
 el('stop-choice').addEventListener('change',()=>window.TransPandaMap.selectStop(el('stop-choice').value));

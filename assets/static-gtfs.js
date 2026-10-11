@@ -29,6 +29,7 @@ window.staticGTFS = (() => {
       return (await catalog()).routes.filter(r => normalize(`${r.route_short_name} ${r.route_long_name} ${r.agency_name}`).includes(term)).sort((a,b) => Number(normalize(b.route_short_name)===term)-Number(normalize(a.route_short_name)===term) || a.route_short_name.localeCompare(b.route_short_name,'fr',{numeric:true})).slice(0,60);
     }
     if (url.pathname.endsWith('/stops')) {
+      if (url.searchParams.get('all') === '1') return stops();
       if (url.searchParams.has('route')) {
         const mapping = await load('route-stops.json');
         const all = await stops();

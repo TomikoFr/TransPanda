@@ -20,7 +20,7 @@ Le serveur Python fournit le site et une API locale de consultation des horaires
 
 ### Carte interactive
 
-Le bouton « Ouvrir la carte » affiche les arrêts du résultat de recherche ou de la ligne sélectionnée. Zoom, déplacement et recentrage sont disponibles. Choisir un arrêt ouvre sa fiche ; « Voir les horaires » sélectionne le quai et charge son tableau dans TransPanda. Les coordonnées viennent du GTFS et les fonds de carte d’OpenStreetMap, avec attribution visible. La carte ne trace pas de parcours entre les quais et ne montre pas la position des véhicules en temps réel.
+Le bouton « Ouvrir la carte » affiche automatiquement les arrêts proches de Bordeaux, sans recherche préalable. En déplaçant la carte, les arrêts de la zone visible apparaissent. Les repères numérotés regroupent des arrêts proches : cliquer dessus zoome pour distinguer les quais. Seuls les repères de la zone visible sont créés pour préserver la fluidité sur mobile. Une recherche d’arrêt ou la sélection d’une ligne recentre la carte sur ses résultats ; « Tous les arrêts » rétablit l’exploration. Choisir un arrêt ouvre sa fiche ; « Voir les horaires » sélectionne le quai et charge son tableau dans TransPanda, même sans recherche préalable. Les coordonnées viennent du GTFS et les fonds de carte d’OpenStreetMap, avec attribution visible. La carte ne trace pas de parcours entre les quais et ne montre pas la position des véhicules en temps réel.
 
 Leaflet 1.9.4 est fourni localement dans `assets/leaflet/`, avec sa licence MIT. Aucune clé d’API n’est nécessaire. Les tuiles ne sont demandées qu’après ouverture de la carte ; si le fond ne peut pas charger, un message apparaît et les marqueurs restent consultables. Le build copie récursivement les images et fichiers de la carte.
 
@@ -40,7 +40,7 @@ Pour tester ce mode localement :
 python3 tools/export_static.py /workspace/transpanda-data/gtfs.sqlite public/data
 cp index.html public/
 mkdir -p public/assets
-cp assets/*.js assets/*.css public/assets/
+cp -R assets/. public/assets/
 python3 -m http.server 8003 --directory public
 ```
 

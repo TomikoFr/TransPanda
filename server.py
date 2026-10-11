@@ -65,6 +65,9 @@ class Handler(SimpleHTTPRequestHandler):
                     rows = db.execute("SELECT r.route_id,r.route_short_name,r.route_long_name,a.agency_name FROM routes r LEFT JOIN agency a ON a.agency_id=r.agency_id WHERE (r.route_short_name || ' ' || r.route_long_name || ' ' || coalesce(a.agency_name,'')) LIKE ? ESCAPE '\\' ORDER BY CASE WHEN lower(r.route_short_name)=lower(?) THEN 0 ELSE 1 END,r.route_short_name LIMIT 60", ('%'+term+'%',query.get('q',[''])[0].strip()))
                     return self.respond([dict(r) for r in rows])
                 if parsed.path == '/api/stops':
+                    if query.get('all', [''])[0] == '1':
+                        rows = db.execute("SELECT stop_id,stop_name,stop_lat,stop_lon FROM stops WHERE location_type='' OR location_type='0' ORDER BY stop_name")
+                        return self.respond([dict(r) for r in rows])
                     if 'route' in query:
                         rows = db.execute("SELECT DISTINCT s.stop_id,s.stop_name,s.stop_lat,s.stop_lon FROM stops s JOIN stop_times st ON st.stop_id=s.stop_id JOIN trips t ON t.trip_id=st.trip_id WHERE t.route_id=? AND (s.location_type='' OR s.location_type='0') ORDER BY s.stop_name", (query['route'][0],))
                         return self.respond([dict(r) for r in rows])
