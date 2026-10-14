@@ -1,0 +1,19 @@
+{
+  "name": "transpanda",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.15.0" },
+  "scripts": {
+    "build": "bash tools/build_cloudflare.sh",
+    "dev": "node tools/dev_proxy.mjs",
+    "deploy": "wrangler deploy",
+    "test": "node tools/test_worker.mjs && node tools/test_journey_router.cjs && python3 tools/test_export_routing.py"
+  },
+  "devDependencies": {
+    "wrangler": "4.151.0",
+    "miniflare": "5.20261012.0-beta",
+    "undici": "7.29.1",
+    "esbuild": "0.28.2"
+  }
+}

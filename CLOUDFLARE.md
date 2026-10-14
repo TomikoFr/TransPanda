@@ -1,48 +1,43 @@
-# Deploy TransPanda on Cloudflare Pages
+# Déployer TransPanda sur Cloudflare Workers
 
-## Existing Workers deployment
+L’adresse existante est `https://transpanda.tomikofauveau.workers.dev/`. Le Worker sert les fichiers de `public/` et deux API :
 
-The existing address `https://transpanda.tomikofauveau.workers.dev/` uses **Workers**, not Pages. It can also serve the static site using Workers Static Assets. `wrangler.toml` configures the worker name `transpanda`, the generated `public/` assets and their build command.
+- `/api/addresses?q=...` : suggestions d’adresses IGN ;
+- `/api/live/vehicles` : positions officielles récentes TBM.
 
-If keeping this Worker with Git integration, select the `main` branch, leave the root directory at the repository root, and use **Deploy command: `npx wrangler deploy`**. Wrangler executes the build command defined in `wrangler.toml`. Leave the separate build command blank to avoid building twice. If the interface requires a separate build command, use `bash tools/build_cloudflare.sh`; the additional rebuild during deploy is redundant but produces the same assets. No account ID, API token or secret is committed. Cloudflare's Git integration authenticates its own deployment.
+Le calcul des itinéraires reste dans le navigateur, à partir des courses GTFS exportées. Aucun compte de service tiers, clé personnelle ni base payante n’est nécessaire. Les requêtes externes utilisent des fournisseurs fixes, avec validation, délais et cache.
 
-The Workers URL is only verified after a successful deployment and functional checks. A local networking refusal from the onboarding proxy does not establish the website's state.
+## Intégration Git existante
 
-If deployment reports `Running custom build failed`, expand the logs above that summary. The build prints `[TransPanda] FAILED` with the failing stage, exit code and line. Copy that message and the error immediately above it. For a missing Python interpreter, set the Cloudflare build variable `PYTHON_VERSION` to `3.12`; the script also supports a Python 3 executable named `python`. No token is needed to download the public GTFS. A curl failure is a download problem; an import failure needs its Python traceback, not only the Wrangler summary.
+Connecter `TomikoFr/TransPanda`, branche `main`, racine du dépôt. Configurer :
 
-## Pages alternative
-
-Cloudflare's Python 3.13.3 build image was observed to lack `_sqlite3`. The build now probes SQLite before downloading data, selects a working system Python if available, or installs the pinned `pysqlite3-binary` wheel into a temporary directory. Only the import/export tools use this fallback; no Python dependency is deployed to the website. TLS and package verification remain enabled, and no compilation or root access is needed.
-
-Use **Pages**, not a Worker. Connect `TomikoFr/TransPanda` and configure:
-
-| Setting | Value |
+| Réglage | Valeur |
 | --- | --- |
-| Production branch | `main` |
-| Framework preset | None |
-| Build command | `bash tools/build_cloudflare.sh` |
-| Build output directory | `public` |
-| Root directory | Repository root (leave blank) |
+| Version de Node | 22.15 ou plus récente |
+| Commande de déploiement | `npx wrangler deploy` |
+| Commande de build séparée | vide |
 
-No Firebase account, API key, database service, or environment secret is needed. The build downloads the public Nouvelle-Aquitaine GTFS, imports it temporarily and exports JSON files grouping 100 platforms per file. The browser searches lines, selects their stops and computes scheduled departures from calendar rules directly inside TransPanda. The national external-link directory is removed. This deployment still covers Nouvelle-Aquitaine, not all France.
+Cloudflare installe les dépendances npm du fichier verrouillé. Wrangler exécute ensuite `bash tools/build_cloudflare.sh`, configuré dans `wrangler.toml`. Une commande de build séparée provoquerait un second export inutile. L’authentification du déploiement reste fournie par l’intégration Git Cloudflare.
 
-The build checks the Pages Free limits of 20,000 files and 25 MiB per file before replacing `public/`. Raw ZIPs and SQLite files are never deployed. Data is refreshed on each build; there is no automatic daily Cloudflare refresh configured. New GitHub commits trigger builds once the Git integration is active. To refresh manually, use **Deployments → Retry deployment** on the latest production deployment. Scheduled builds can be configured later with a Cloudflare deploy hook.
+`wrangler.toml` définit `main = "worker.js"`, le binding `ASSETS` et `run_worker_first = ["/api/*"]`. Conserver ces réglages pour que les API répondent avant les fichiers statiques. Aucun jeton Cloudflare n’est enregistré dans Git.
 
-After deployment succeeds, open the Pages URL shown by Cloudflare. Search for “Gare Saint-Jean” and choose a platform, or search for line “D”, choose TBM and select its platform. Verify the table for a date covered by the feed. These are scheduled times, not live delays. No user data or favorites are synchronized across browsers.
+Le build importe le GTFS dans un dossier temporaire, exporte les horaires par groupe de 100 quais et les courses complètes par ligne, puis copie récursivement les assets. Il vérifie les limites de 20 000 fichiers et 25 MiB par fichier avant de remplacer `public/`. Si Python ne possède pas SQLite, il sélectionne un Python système compatible ou installe le pilote binaire vérifié `pysqlite3-binary` dans le dossier temporaire.
 
-## Local check
+En cas d’erreur, lire les lignes au-dessus de `[TransPanda] FAILED` : elles indiquent l’étape et le code de sortie. `Running custom build failed` seul n’identifie pas la cause. Aucun token n’est requis pour télécharger le GTFS public.
 
-Run the full build:
+## Vérification locale
 
 ```sh
-bash tools/build_cloudflare.sh
-python3 -m http.server 8003 --directory public
+npm ci
+npm test
+TRANSPANDA_GTFS_DB=/workspace/transpanda-data/gtfs.sqlite npm run build
+npm run dev
 ```
 
-To reuse an already validated SQLite database locally:
+Rechercher « Gare Saint-Jean Bordeaux » et « Place des Quinconces Bordeaux », sélectionner les suggestions puis calculer un trajet à une date du calendrier. Vérifier aussi les horaires par arrêt et les positions TBM. Les accès sortants nécessaires sont `www.pigma.org`, `data.geopf.fr`, `bdx.mecatran.com` et `tile.openstreetmap.org`, en plus des registres npm/PyPI pour les outils de développement.
 
-```sh
-TRANSPANDA_GTFS_DB=/workspace/transpanda-data/gtfs.sqlite bash tools/build_cloudflare.sh
-```
+## Actualisation et alternatives
 
-Firebase configuration and the independent GitHub Pages workflow remain in the repository; neither deploys to Cloudflare. The new hosting is only live after Cloudflare reports a successful deployment.
+Chaque déploiement Git renouvelle les horaires. Pour actualiser manuellement, relancer le dernier déploiement dans Cloudflare. Aucun renouvellement quotidien automatique Cloudflare n’est configuré. Les positions TBM sont récupérées à la demande et ne dépendent pas d’un nouveau build.
+
+GitHub Pages peut publier les fichiers et le moteur de calcul, mais n’exécute pas les API du Worker. Cloudflare Pages demanderait une adaptation des fonctions serveur ; garder le Worker existant pour les trois nouvelles fonctions. Firebase n’est pas utilisé.

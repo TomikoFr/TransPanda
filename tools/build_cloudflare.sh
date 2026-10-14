@@ -61,6 +61,9 @@ fi
 build_stage="exporting static timetables"
 printf '[TransPanda] Exporting static timetables…\n'
 "$python_bin" tools/export_static.py "$gtfs_database" "$build_tmp/site/data"
+build_stage="exporting complete trips for route planning"
+printf '[TransPanda] Exporting route planning data…\n'
+"$python_bin" tools/export_routing.py "$gtfs_database" "$build_tmp/site/data"
 build_stage="preparing website assets"
 cp index.html "$build_tmp/site/index.html"
 mkdir -p "$build_tmp/site/assets"

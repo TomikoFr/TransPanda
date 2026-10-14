@@ -2,6 +2,7 @@
 import argparse
 import json
 import os
+import re
 import sqlite3
 from datetime import date, timedelta
 from functools import lru_cache
@@ -40,6 +41,12 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         parsed = urlparse(self.path)
+        # Publish only generated JSON indexes/timetables needed by the browser.
+        if re.fullmatch(r'/data/(?:stops|catalog|route-stops|routing/index|routing/\d+|departures/\d+)\.json', parsed.path):
+            path = ROOT / 'public' / parsed.path.lstrip('/')
+            if path.is_file():
+                return self.respond(json.loads(path.read_text(encoding='utf-8')))
+            return self.respond({'error':'Les données de ce trajet ne sont pas disponibles.'},404)
         if parsed.path == '/data/national-networks.json':
             index = ROOT / 'public/data/national-networks.json'
             if index.is_file():
@@ -47,7 +54,7 @@ class Handler(SimpleHTTPRequestHandler):
             return self.respond({'error':'Catalogue national non généré.'},404)
         if not parsed.path.startswith('/api/'):
             # Serve only application assets, never scripts or a potential local database.
-            map_asset = parsed.path in ['/assets/stops-map.js', '/assets/stops-map.css', '/assets/leaflet/leaflet.js', '/assets/leaflet/leaflet.css', '/assets/leaflet/images/marker-icon.png', '/assets/leaflet/images/marker-icon-2x.png', '/assets/leaflet/images/marker-shadow.png', '/assets/leaflet/images/layers.png', '/assets/leaflet/images/layers-2x.png']
+            map_asset = parsed.path in ['/assets/stops-map.js', '/assets/stops-map.css', '/assets/journey-router.js', '/assets/journeys.js', '/assets/journeys.css', '/assets/live-vehicles.js', '/assets/live-vehicles.css', '/assets/leaflet/leaflet.js', '/assets/leaflet/leaflet.css', '/assets/leaflet/images/marker-icon.png', '/assets/leaflet/images/marker-icon-2x.png', '/assets/leaflet/images/marker-shadow.png', '/assets/leaflet/images/layers.png', '/assets/leaflet/images/layers-2x.png']
             if not map_asset and parsed.path not in ['/', '/index.html', '/assets/style.css', '/assets/app.js', '/assets/gtfs.js', '/assets/static-gtfs.js', '/assets/national.js']:
                 self.send_error(404)
                 return

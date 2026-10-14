@@ -1,0 +1,15 @@
+.stop-live-panel { margin-top: 22px; padding-top: 20px; border-top: 1px solid var(--line); }
+.stop-live-panel h4 { margin: 0 0 8px; font-size: 17px; }
+.stop-live-panel p { font-size: 13px; color: var(--muted); }
+.stop-live-status { margin-bottom: 0; }
+.stop-live-marker {
+  display: grid;
+  place-items: center;
+  border: 2px solid white;
+  border-radius: 50%;
+  background: #a34915;
+  color: white;
+  box-shadow: 0 2px 8px #48302455;
+  font: 700 20px/1 system-ui, sans-serif;
+}
+.stop-live-marker:focus-visible { outline: 3px solid #bd8e2c; outline-offset: 3px; }

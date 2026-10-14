@@ -109,6 +109,9 @@ fieldset { border: 0; padding: 0; margin: 22px 0; }
 .notice > span { font-size: 20px; }
 .notice p { margin: 0; }
 .notice strong { color: var(--ink); }
+.demo-examples { margin: 32px 0; padding: 20px; border: 1px solid var(--line); border-radius: 16px; }
+.demo-examples > summary { cursor: pointer; color: var(--muted); font-weight: 600; }
+.demo-examples > p a { color: var(--green); }
 .map-panel { border: 1px solid #d4dfcf; border-radius: 18px; background: #edf0e6; overflow: hidden; min-height: 484px; display: flex; flex-direction: column; }
 .map-top, .map-bottom { padding: 19px; display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 10px; letter-spacing: 1px; color: var(--muted); }
 .map-badge { background: #ffffffc9; border: 1px solid #d8e2d1; border-radius: 20px; padding: 8px 12px; letter-spacing: 0; white-space: nowrap; }

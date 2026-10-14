@@ -22,6 +22,9 @@
   let map;
   let markerLayer;
   let clusterLayer;
+  let journeyLayer;
+  let journeyNote;
+  let journeyActive = false;
   let onSelect = function () {};
   let tileFailed = false;
   const markers = new Map();
@@ -97,7 +100,7 @@
     button.textContent = 'Voir les horaires';
     button.addEventListener('click', function () {
       selectStop(stop.stop_id);
-      onSelect(stop.stop_id, stop, mode === 'browse');
+      onSelect(stop.stop_id, stop, mode === 'browse' || journeyActive);
     });
     popup.append(name, identifier, button);
     return popup;
@@ -224,6 +227,7 @@
   }
 
   function showAllStops() {
+    clearJourney();
     mode = 'browse';
     selectedId = '';
     omitted = 0;
@@ -244,6 +248,7 @@
     map = window.L.map(mapElement, { scrollWheelZoom: false });
     markerLayer = window.L.layerGroup().addTo(map);
     clusterLayer = window.L.layerGroup().addTo(map);
+    journeyLayer = window.L.layerGroup().addTo(map);
     window.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -267,6 +272,7 @@
     map = undefined;
     markerLayer = undefined;
     clusterLayer = undefined;
+    journeyLayer = undefined;
     markers.clear();
     tileFailed = false;
     onSelect = typeof callback === 'function' ? callback : function () {};
@@ -315,12 +321,17 @@
     status.className = 'stop-map-status';
     status.setAttribute('role', 'status');
     status.setAttribute('aria-live', 'polite');
-    section.append(header, description, mapElement, status);
+    journeyNote = document.createElement('p');
+    journeyNote.className = 'stop-map-status';
+    journeyNote.textContent = 'Tracé indicatif entre les étapes du trajet. Les lignes ne suivent pas les rues ni les voies empruntées.';
+    journeyNote.hidden = true;
+    section.append(header, description, mapElement, status, journeyNote);
     container.append(section);
     updateStatus();
   }
 
   function setStops(values) {
+    clearJourney();
     mode = 'filtered';
     const normalized = normalizeStops(values);
     stops = normalized.stops;
@@ -348,5 +359,49 @@
     showAllStops();
   }
 
-  window.TransPandaMap = { mount: mount, setStops: setStops, selectStop: selectStop, clear: clear };
+  function clearJourney() {
+    journeyActive = false;
+    journeyLayer?.clearLayers();
+    if (journeyNote) journeyNote.hidden = true;
+  }
+
+  function showJourney(journey) {
+    const points = [];
+    const platforms = [];
+    const legs = Array.isArray(journey?.legs) ? journey.legs : [];
+    function point(place) {
+      const lat = coordinate(place?.lat ?? place?.stop_lat, 90);
+      const lon = coordinate(place?.lon ?? place?.stop_lon, 180);
+      return lat === null || lon === null ? null : [lat, lon];
+    }
+    for (const leg of legs) {
+      if (leg.type !== 'transit') continue;
+      for (const place of [leg.from, leg.to]) {
+        const position = point(place);
+        if (position && place.stop_id) platforms.push({stop_id:place.stop_id,stop_name:place.stop_name || place.label,stop_lat:position[0],stop_lon:position[1]});
+      }
+    }
+    setStops(platforms);
+    openMap();
+    if (!map) return;
+    journeyActive = true;
+    journeyNote.hidden = false;
+    for (const leg of legs) {
+      const from = point(leg.from), to = point(leg.to);
+      if (!from || !to) continue;
+      points.push(from, to);
+      L.polyline([from, to], {color:leg.type === 'walk' ? '#765f31' : '#23674f',weight:leg.type === 'walk' ? 3 : 5,dashArray:leg.type === 'walk' ? '5 6' : undefined}).addTo(journeyLayer);
+    }
+    if (points.length) {
+      for (const [position, label] of [[points[0], 'Départ'], [points[points.length - 1], 'Arrivée']]) {
+        const popup = document.createElement('strong');
+        popup.textContent = label;
+        L.circleMarker(position, {radius:7,color:'#183c32',fillColor:'white',fillOpacity:1,weight:3}).bindPopup(popup).addTo(journeyLayer);
+      }
+      map.fitBounds(points, {padding:[35,35],maxZoom:16});
+    }
+    section.scrollIntoView({behavior:'smooth',block:'start'});
+  }
+
+  window.TransPandaMap = { mount: mount, setStops: setStops, selectStop: selectStop, clear: clear, open:openMap, getMap:()=>map, showJourney:showJourney, clearJourneyView:()=>{if(journeyActive)showAllStops();} };
 })();
